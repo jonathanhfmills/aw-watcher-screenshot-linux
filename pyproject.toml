@@ -1,0 +1,14 @@
+[project]
+name = "aw-watcher-screenshot"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "aw-client>=0.5.15",
+    "aw-core>=0.5.17",
+    "mss>=10.1.0",
+    "psutil>=7.1.0",
+    "pyobjc-framework-Cocoa>=10.0; sys_platform == 'darwin'",
+    "pyobjc-framework-Quartz>=10.0; sys_platform == 'darwin'",
+]
