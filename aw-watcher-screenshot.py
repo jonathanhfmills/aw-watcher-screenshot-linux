@@ -50,12 +50,6 @@ LOG = logging.getLogger("aw-watcher-screenshot")
     help="Directory to save screenshots.",
 )
 @click.option(
-    "--spool-dir",
-    type=click.Path(dir_okay=True, file_okay=False, writable=True),
-    default=None,
-    help="Directory to write JSON records for external LLM processing.",
-)
-@click.option(
     "--jpeg",
     "use_jpeg",
     is_flag=True,
@@ -109,7 +103,6 @@ def main(
     crop_active_window: bool,
     capture_on_start: bool,
     screens_dir: Optional[str],
-    spool_dir: Optional[str],
     use_jpeg: bool,
     quality: int,
     min_interval: float,
@@ -149,7 +142,7 @@ def main(
         screenshots_dir=(
             Path(screens_dir) if screens_dir else FileUtils.get_default_screenshot_dir()
         ),
-        spool_dir=Path(spool_dir) if spool_dir else None,
+        spool_dir=None,
         image_format=ImageFormat.JPEG if use_jpeg else ImageFormat.PNG,
         jpeg_quality=quality,
         testing_mode=testing,

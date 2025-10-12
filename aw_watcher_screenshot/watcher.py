@@ -1,10 +1,7 @@
 """Main screenshot watcher implementation."""
 
 import hashlib
-import json
 import logging
-import os
-import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional, Tuple
@@ -18,45 +15,6 @@ from .utils import FileUtils, TimeUtils
 from .window_detector import get_window_detector
 
 LOG = logging.getLogger(__name__)
-
-
-class SpoolWriter:
-    """Writes spool records for external LLM processing."""
-
-    def __init__(self, spool_dir: Optional[Path]):
-        """
-        Initialize spool writer.
-
-        Args:
-            spool_dir: Directory to write spool files. None to disable.
-        """
-        self.spool_dir = spool_dir
-
-    def write_record(self, record: dict) -> None:
-        """Write a spool record atomically."""
-        if not self.spool_dir:
-            return
-
-        filename = (
-            f"{record['ts']}_"
-            f"{FileUtils.sanitize_filename(record.get('app', ''))}_"
-            f"{FileUtils.sanitize_filename(record.get('title', ''))}_"
-            f"{uuid.uuid4().hex}.json"
-        )
-
-        filepath = self.spool_dir / filename
-        temp_path = filepath.with_suffix(".tmp")
-
-        try:
-            with open(temp_path, "w", encoding="utf-8") as f:
-                json.dump(record, f, ensure_ascii=False, separators=(",", ":"))
-                f.flush()
-                os.fsync(f.fileno())
-            temp_path.replace(filepath)
-        except Exception as e:
-            LOG.error(f"Failed to write spool record: {e}")
-            if temp_path.exists():
-                temp_path.unlink()
 
 
 class ScreenshotWatcher:
@@ -84,7 +42,6 @@ class ScreenshotWatcher:
         self.image_capture = ImageCapture(
             config.image_format, config.jpeg_quality, config.screen_number
         )
-        self.spool_writer = SpoolWriter(config.spool_dir)
 
         # Initialize ActivityWatch client
         self.client = aw_client.ActivityWatchClient(
@@ -183,9 +140,6 @@ class ScreenshotWatcher:
                         self.last_screenshot_time = start_time
                         self.pending_window_change = None
 
-            # Send heartbeat
-            self._send_heartbeat(start_time)
-
             # Sleep until next poll
             TimeUtils.sleep_aligned(self.config.poll_interval)
 
@@ -231,15 +185,15 @@ class ScreenshotWatcher:
         # Calculate hash
         image_hash = hashlib.sha256(image_bytes).hexdigest()
 
-        # Create ActivityWatch event
+        # Create ActivityWatch event with all screenshot data
         event_data = {
-            "title": window_info.title if window_info else "",
-            "app": window_info.app if window_info else None,
-            "pid": window_info.pid if window_info else None,
-            "win_id": window_info.win_id if window_info else None,
-            "bbox": (
-                window_info.bbox.to_list() if window_info and window_info.bbox else None
-            ),
+            # "title": window_info.title if window_info else "",
+            # "app": window_info.app if window_info else None,
+            # "pid": window_info.pid if window_info else None,
+            # "win_id": window_info.win_id if window_info else None,
+            # "bbox": (
+            #    window_info.bbox.to_list() if window_info and window_info.bbox else None
+            # ),
             "path": str(filepath.absolute()),
             "reason": "window_title_change" if window_info else "timer",
             "capture": {
@@ -256,41 +210,6 @@ class ScreenshotWatcher:
 
         try:
             self.client.insert_event(self.bucket_id, event)
+            LOG.info(f"Captured {app_name} ({title}) -> {filepath.name}")
         except Exception as e:
             LOG.error(f"Failed to insert ActivityWatch event: {e}")
-
-        # Write spool record
-        spool_record = {
-            "ts": timestamp_str,
-            "title": window_info.title if window_info else "",
-            "app": window_info.app if window_info else None,
-            "pid": window_info.pid if window_info else None,
-            "win_id": window_info.win_id if window_info else None,
-            "bbox": (
-                window_info.bbox.to_list() if window_info and window_info.bbox else None
-            ),
-            "path": str(filepath.absolute()),
-            "sha256": image_hash,
-        }
-        self.spool_writer.write_record(spool_record)
-
-        LOG.info(f"Captured {app_name} ({title}) -> {filepath.name}")
-
-    def _send_heartbeat(self, timestamp: datetime) -> None:
-        """Send heartbeat event."""
-        duration = TimeUtils.now_utc() - timestamp
-        heartbeat_event = Event(
-            timestamp=timestamp,
-            duration=duration,
-            data={"$schema": "aw.watcher.screenshot.heartbeat"},
-        )
-
-        try:
-            self.client.heartbeat(
-                self.bucket_id,
-                heartbeat_event,
-                pulsetime=self.config.poll_interval + 0.25,
-                queued=True,
-            )
-        except Exception as e:
-            LOG.debug(f"Heartbeat failed: {e}")
