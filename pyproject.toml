@@ -12,7 +12,7 @@ license = { text = "MIT" }
 dependencies = [
     "aw-client>=0.5.15",
     "aw-core>=0.5.17",
-    "click>=8.3.0",
+    "click>=8.0.0",
     "imagehash>=4.3.0",
     "pillow>=10.0.0",
     "requests>=2.28.0",
