@@ -77,9 +77,24 @@ aw-watcher-screenshot-linux --no-window-detection --capture-on-start
 - `requests` — AW API queries for window detection
 - One of: `cosmic-screenshot`, `grim`, `gnome-screenshot` — screenshot capture
 
+## Limitations
+
+The ActivityWatch web UI has no built-in screenshot viewer. Screenshots are stored as events in the `aw-watcher-screenshot-linux_{hostname}` bucket with file paths, but the UI only shows raw event metadata in the Raw Data tab. There's no timeline scrubbing with inline screenshots like ManicTime offers.
+
+What you get today:
+- Screenshots saved to disk as `.webp` files (`~/.local/share/activitywatch/screenshots/`)
+- Events in AW with `app`, `title`, `path`, and `phash` fields — queryable via the API
+- Perceptual dedup prevents redundant captures
+
+What's missing (would require an AW web UI plugin):
+- Inline screenshot gallery on the timeline
+- Scrubbing the timeline to see what was on screen at any point
+- Thumbnail previews in event lists
+
 ## Future
 
-- [ ] Rust rewrite — single static binary, no Python runtime, consistent with [aw-watcher-window-cosmic](https://github.com/jonathanhfmills/aw-watcher-window-cosmic)
+- [ ] Rust rewrite — single static binary, no Python runtime
+- [ ] ActivityWatch web UI plugin for screenshot timeline visualization
 
 ## License
 
